@@ -1,6 +1,7 @@
 import base64
 import io
 import random
+import openai
 
 import pandas as pd
 from PIL import Image
@@ -173,12 +174,12 @@ def main():
             #----------------------------评估验证后的答案--------------------------#
             try:
                 answer_revise = verifier.verify(original_image=sample["image"], original_q=prompt, original_a=answer_original[0])
-            except NotImplementedError:
+            except openai.InternalServerError:
                 time.sleep(300)
                 print("HTTPStatusError,waiting...")
                 try:
                     answer_revise = verifier.verify(original_image=sample["image"], original_q=prompt, original_a=answer_original[0])
-                except NotImplementedError:
+                except openai.InternalServerError:
                     print(f"Failed to verify:index:{idx}")
                     continue
             # print(f"revised answer 1:{answer_revise}")
