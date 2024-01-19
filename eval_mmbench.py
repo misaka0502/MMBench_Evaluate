@@ -119,7 +119,7 @@ class MMBenchDataset(Dataset):
 
 def main():
     #------------------------load model---------------------------------#
-    device = torch.device("cuda:7") if torch.cuda.is_available() else "cpu"
+    device = torch.device("cuda:4") if torch.cuda.is_available() else "cpu"
     model_name = "instructblip_7b"
     model, vis_processors, _ = load_model_and_preprocess(
         name="blip2_vicuna_instruct", 
@@ -149,9 +149,13 @@ def main():
     #------------------------evaluate---------------------------------#
     result_file_original = model_name + '_' + dataset_name
     result_file_revise = model_name + '_' + dataset_name + "revised"
+
+    #------------统计当前已经验证过的数量，方便在程序意外终止后恢复-----------#
+    file_list = os.listdir("mmbench_res/instructblip_7b/")
+    file_cnt = len(file_list)
     #------------------------original model result---------------------#
     for id, sample in tqdm(enumerate(dataloader), total=len(dataloader)):
-        if state == True:
+        if id >= (file_cnt*200):
             # image = sample["image"]
             # print(f"Image shape in samples:{image.shape}")
             #----------------------------评估原始答案-----------------------------#
@@ -163,18 +167,18 @@ def main():
             for idx, out in zip(sample["idx"], answer_original):
                 result_original.loc[result_original["index"].isin([idx.item()]),"prediction"] = out
                 # print(f"out 1:{out}")
-            if id % 50 == 0 and id != 0:
+            if id % 200 == 0 and id != 0:
                 result_original.to_excel(f"./mmbench_res/{model_name}/{result_file_original}_{id}.xlsx")
 
             #----------------------------评估验证后的答案--------------------------#
             try:
                 answer_revise = verifier.verify(original_image=sample["image"], original_q=prompt, original_a=answer_original[0])
-            except NotImplementedError():
+            except NotImplementedError:
                 time.sleep(300)
                 print("HTTPStatusError,waiting...")
                 try:
                     answer_revise = verifier.verify(original_image=sample["image"], original_q=prompt, original_a=answer_original[0])
-                except NotImplementedError():
+                except NotImplementedError:
                     print(f"Failed to verify:index:{idx}")
                     continue
             # print(f"revised answer 1:{answer_revise}")
@@ -183,7 +187,7 @@ def main():
             for idx, out in zip(sample["idx"], [answer_revise]):
                 result_revise.loc[result_revise["index"].isin([idx.item()]),"prediction"] = out
                 # print(f"out 2:{out}")
-            if id % 50 == 0 and id != 0:
+            if id % 200 == 0 and id != 0:
                 result_revise.to_excel(f"./mmbench_res/{model_name}/{result_file_revise}_{id}.xlsx")
             # print("running")
         else:
